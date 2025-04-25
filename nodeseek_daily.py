@@ -21,7 +21,7 @@ cookie = os.environ.get("NS_COOKIE") or os.environ.get("COOKIE")
 # 通过环境变量控制是否使用无头模式，默认为 True（无头模式）
 headless = os.environ.get("HEADLESS", "true").lower() == "true"
 
-randomInputStr = ["bd","绑定","帮顶"]
+randomInputStr = ["感谢分享","太精彩了吧","真的是这样","非常感谢","马上试试","太厉害了","必须顶顶"]
 
 def click_sign_icon(driver):
     """
