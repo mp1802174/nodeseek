@@ -230,7 +230,7 @@ def nodeseek_comment(driver):
                 # 返回交易区
                 # driver.get(target_url)
                 # time.sleep(2)  # 等待页面加载
-                time.sleep(random.uniform(2,5))
+                time.sleep(random.uniform(120,240))
                 
             except Exception as e:
                 print(f"处理帖子时出错: {str(e)}")
