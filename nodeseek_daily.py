@@ -65,7 +65,7 @@ def get_gemini_reply(post_title, post_content):
         
         # 清理回复，去除多余换行或符号
         reply = reply.strip().replace("\n", " ")
-        if len(reply) < 10 or len(reply) > 100:
+        if len(reply) < 3 or len(reply) > 12:
             print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
             return None
         
