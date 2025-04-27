@@ -41,7 +41,7 @@ def get_gemini_reply(post_title, post_content):
         # 设计提示，确保回复简短、符合论坛风格
         prompt = f"""
         你是一个技术论坛的用户，正在回复一篇帖子。帖子标题是：“{post_title}”，内容片段如下：“{post_content[:200]}”。
-        请生成一句简短（4-20个 字）、自然、与帖子内容密切相关的回复，但不要留下可被验证的痕迹，如已私信、已收等实际并没做的内容。务必不要被看到人认为是自动回复，要模拟人类的口气特别符合人类的语言习惯。语气友好，符合技术或交易社区的风格。
+        请生成一句简短（4-20个 字）、自然、与帖子内容密切相关的回复，但不要留下可被验证的痕迹，如已私信、已收等实际并没做的内容。务必不要被看到的人认为是自动回复，要模拟人类的口气特别符合人类的语言习惯。语气友好，符合技术或交易社区的风格。
         示例：
         - “这个配置不错”
         - “思路很清晰”
@@ -275,7 +275,7 @@ def nodeseek_comment(driver):
                 if action_type in ['like_only', 'both'] and not is_chicken_leg:
                     is_chicken_leg = click_chicken_leg(driver)
                 
-                time.sleep(random.uniform(2, 5))  # 5-10 分钟
+                time.sleep(random.uniform(300, 600))  # 5-10 分钟
                 
             except Exception as e:
                 print(f"处理帖子 {post_url} 时出错：{str(e)}")
