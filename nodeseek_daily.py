@@ -21,7 +21,13 @@ from selenium.webdriver.common.action_chains import ActionChains
 ns_random = os.environ.get("NS_RANDOM", "false")
 cookie = os.environ.get("NS_COOKIE") or os.environ.get("COOKIE")
 headless = os.environ.get("HEADLESS", "true").lower() == "true"
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")  # 从环境变量获取 API 密钥
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+# 调试输出，验证环境变量
+print(f"GEMINI_API_KEY loaded: {'Set' if GEMINI_API_KEY else 'Not set'}")
+print(f"NS_COOKIE loaded: {'Set' if cookie else 'Not set'}")
+print(f"HEADLESS: {headless}")
+print(f"NS_RANDOM: {ns_random}")
 
 def get_gemini_reply(post_title, post_content):
     """
