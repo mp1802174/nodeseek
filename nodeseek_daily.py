@@ -41,10 +41,10 @@ def get_gemini_reply(post_title, post_content):
         # 设计提示，确保回复简短、符合论坛风格
         prompt = f"""
         你是一个技术论坛的用户，正在回复一篇帖子。帖子标题是：“{post_title}”，内容片段如下：“{post_content[:200]}”。
-        请生成一句简短（20-50 字）、自然、与帖子内容相关的回复，语气友好，符合技术或交易社区的风格。
+        请生成一句简短（4-10个 字）、自然、与帖子内容相关的回复，语气友好，符合技术或交易社区的风格。
         示例：
-        - “这个VPS配置很不错，楼主能分享下使用体验吗？”
-        - “感谢分享，代码思路很清晰，学到了！”
+        - “这个配置不错”
+        - “思路很清晰”
         """
         
         url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
