@@ -5,6 +5,7 @@ Licensed under the MIT License.
 See LICENSE file in the project root for full license information.
 """
 import os
+import requests
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -16,145 +17,168 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 
-ns_random = os.environ.get("NS_RANDOM","false")
+# 环境变量
+ns_random = os.environ.get("NS_RANDOM", "false")
 cookie = os.environ.get("NS_COOKIE") or os.environ.get("COOKIE")
-# 通过环境变量控制是否使用无头模式，默认为 True（无头模式）
 headless = os.environ.get("HEADLESS", "true").lower() == "true"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")  # 从环境变量获取 API 密钥
 
-randomInputStr = ["感谢分享","太精彩了吧","真的是这样","非常感谢","马上试试","太厉害了","必须顶顶"]
+def get_gemini_reply(post_title, post_content):
+    """
+    调用 Gemini API 根据帖子内容生成自然回复，失败时返回 None
+    """
+    try:
+        if not GEMINI_API_KEY:
+            print("未找到 Gemini API 密钥，跳过回复")
+            return None
+        
+        # 设计提示，确保回复简短、符合论坛风格
+        prompt = f"""
+        你是一个技术论坛的用户，正在回复一篇帖子。帖子标题是：“{post_title}”，内容片段如下：“{post_content[:200]}”。
+        请生成一句简短（20-50 字）、自然、与帖子内容相关的回复，语气友好，符合技术或交易社区的风格。
+        示例：
+        - “这个VPS配置很不错，楼主能分享下使用体验吗？”
+        - “感谢分享，代码思路很清晰，学到了！”
+        """
+        
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        data = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }]
+        }
+        
+        response = requests.post(f"{url}?key={GEMINI_API_KEY}", headers=headers, json=data, timeout=10)
+        response.raise_for_status()
+        
+        result = response.json()
+        reply = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        
+        # 清理回复，去除多余换行或符号
+        reply = reply.strip().replace("\n", " ")
+        if len(reply) < 10 or len(reply) > 100:
+            print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
+            return None
+        
+        print(f"Gemini 生成回复：{reply}")
+        return reply
+        
+    except Exception as e:
+        print(f"调用 Gemini API 出错：{str(e)}，跳过回复")
+        return None
+
+def extract_post_content(driver):
+    """
+    提取帖子标题和正文内容
+    """
+    try:
+        # 获取标题
+        title_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '.post-title'))
+        )
+        post_title = title_element.text.strip()
+        
+        # 获取正文（取首段）
+        content_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '.post-content'))
+        )
+        post_content = content_element.text.strip()[:500]  # 限制长度
+        
+        return post_title, post_content
+    except Exception as e:
+        print(f"提取帖子内容出错：{str(e)}")
+        return "未知标题", "未知内容"
 
 def click_sign_icon(driver):
     """
-    尝试点击签到图标和试试手气按钮的通用方法
+    尝试点击签到图标和试试手气按钮
     """
     try:
         print("开始查找签到图标...")
-        # 使用更精确的选择器定位签到图标
         sign_icon = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.XPATH, "//span[@title='签到']"))
         )
-        print("找到签到图标，准备点击...")
-        
-        # 确保元素可见和可点击
         driver.execute_script("arguments[0].scrollIntoView(true);", sign_icon)
         time.sleep(0.5)
+        sign_icon.click()
+        print("签到图标点击成功")
         
-        # 打印元素信息
-        print(f"签到图标元素: {sign_icon.get_attribute('outerHTML')}")
-        
-        # 尝试点击
-        try:
-            
-            
-            sign_icon.click()
-            print("签到图标点击成功")
-        except Exception as click_error:
-            print(f"点击失败，尝试使用 JavaScript 点击: {str(click_error)}")
-            driver.execute_script("arguments[0].click();", sign_icon)
-        
-        print("等待页面跳转...")
         time.sleep(5)
         
-        # 打印当前URL
-        print(f"当前页面URL: {driver.current_url}")
-        
-        # 点击"试试手气"按钮
         try:
-            click_button:None
-            
+            click_button = None
             if ns_random:
                 click_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), '试试手气')]"))
-            )
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), '试试手气')]"))
+                )
             else:
                 click_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), '鸡腿 x 5')]"))
-            )
-            
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), '鸡腿 x 5')]"))
+                )
             click_button.click()
             print("完成试试手气点击")
         except Exception as lucky_error:
-            print(f"试试手气按钮点击失败或者签到过了: {str(lucky_error)}")
+            print(f"试试手气按钮点击失败或已签到：{str(lucky_error)}")
             
         return True
         
     except Exception as e:
-        print(f"签到过程中出错:")
-        print(f"错误类型: {type(e).__name__}")
-        print(f"错误信息: {str(e)}")
-        print(f"当前页面URL: {driver.current_url}")
-        print(f"当前页面源码片段: {driver.page_source[:500]}...")
-        print("详细错误信息:")
+        print(f"签到过程中出错：{str(e)}")
         traceback.print_exc()
         return False
 
 def setup_driver_and_cookies():
     """
-    初始化浏览器并设置cookie的通用方法
-    返回: 设置好cookie的driver实例
+    初始化浏览器并设置 Cookie
     """
     try:
-        cookie = os.environ.get("NS_COOKIE") or os.environ.get("COOKIE")
-        headless = os.environ.get("HEADLESS", "true").lower() == "true"
-        
         if not cookie:
-            print("未找到cookie配置")
+            print("未找到 Cookie 配置")
             return None
             
         print("开始初始化浏览器...")
         options = uc.ChromeOptions()
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
-        
         if headless:
-            print("启用无头模式...")
             options.add_argument('--headless')
-            # 添加以下参数来绕过 Cloudflare 检测
             options.add_argument('--disable-blink-features=AutomationControlled')
             options.add_argument('--disable-gpu')
             options.add_argument('--window-size=1920,1080')
-            # 设置 User-Agent
             options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
         
-        print("正在启动Chrome...")
         driver = uc.Chrome(options=options)
-        
         if headless:
-            # 执行 JavaScript 来修改 webdriver 标记
             driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             driver.set_window_size(1920, 1080)
         
-        print("Chrome启动成功")
-        
-        print("正在设置cookie...")
+        print("正在设置 Cookie...")
         driver.get('https://www.nodeseek.com')
-        
-        # 等待页面加载完成
         time.sleep(5)
         
         for cookie_item in cookie.split(';'):
             try:
                 name, value = cookie_item.strip().split('=', 1)
                 driver.add_cookie({
-                    'name': name, 
-                    'value': value, 
+                    'name': name,
+                    'value': value,
                     'domain': '.nodeseek.com',
                     'path': '/'
                 })
             except Exception as e:
-                print(f"设置cookie出错: {str(e)}")
+                print(f"设置 Cookie 出错：{str(e)}")
                 continue
         
-        print("刷新页面...")
         driver.refresh()
-        time.sleep(5)  # 增加等待时间
-        
+        time.sleep(5)
         return driver
         
     except Exception as e:
-        print(f"设置浏览器和Cookie时出错: {str(e)}")
-        print("详细错误信息:")
-        print(traceback.format_exc())
+        print(f"设置浏览器和 Cookie 时出错：{str(e)}")
+        traceback.print_exc()
         return None
 
 def nodeseek_comment(driver):
@@ -164,17 +188,14 @@ def nodeseek_comment(driver):
         driver.get(target_url)
         print("等待页面加载...")
         
-        # 获取初始帖子列表
         posts = WebDriverWait(driver, 30).until(
             EC.presence_of_all_elements_located((By.CSS_SELECTOR, '.post-list-item'))
         )
         print(f"成功获取到 {len(posts)} 个帖子")
         
-        # 过滤掉置顶帖
         valid_posts = [post for post in posts if not post.find_elements(By.CSS_SELECTOR, '.pined')]
-        selected_posts = random.sample(valid_posts, min(20, len(valid_posts)))
+        selected_posts = random.sample(valid_posts, min(random.randint(5, 10), len(valid_posts)))
         
-        # 存储已选择的帖子URL
         selected_urls = []
         for post in selected_posts:
             try:
@@ -184,64 +205,81 @@ def nodeseek_comment(driver):
                 continue
         
         is_chicken_leg = False
+        comment_count = 0
+        MAX_DAILY_COMMENTS = 20
         
-        # 使用URL列表进行操作
         for i, post_url in enumerate(selected_urls):
+            if comment_count >= MAX_DAILY_COMMENTS:
+                print("达到每日评论上限，停止评论")
+                break
+                
             try:
                 print(f"正在处理第 {i+1} 个帖子")
                 driver.get(post_url)
                 
-                # 处理加鸡腿
-                if is_chicken_leg is False:
+                # 模拟浏览
+                driver.execute_script("window.scrollBy(0, 500);")
+                time.sleep(random.uniform(2, 5))
+                
+                # 提取帖子内容
+                post_title, post_content = extract_post_content(driver)
+                
+                # 获取 Gemini 生成的回复
+                input_text = get_gemini_reply(post_title, post_content)
+                if input_text is None:
+                    print(f"帖子 {post_url} 获取回复失败，跳过评论")
+                    with open('comment_log.txt', 'a', encoding='utf-8') as f:
+                        f.write(f"{time.ctime()}: Skipped comment on {post_url} due to Gemini API failure\n")
+                    continue
+                
+                # 尝试点赞（加鸡腿）
+                action_type = random.choices(
+                    ['comment_only', 'like_only', 'both'],
+                    weights=[0.5, 0.3, 0.2],
+                    k=1
+                )[0]
+                
+                if action_type in ['comment_only', 'both']:
+                    editor = WebDriverWait(driver, 30).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, '.CodeMirror'))
+                    )
+                    editor.click()
+                    time.sleep(0.5)
+                    
+                    actions = ActionChains(driver)
+                    for char in input_text:
+                        actions.send_keys(char)
+                        actions.pause(random.uniform(0.1, 0.3))
+                    actions.perform()
+                    time.sleep(2)
+                    
+                    submit_button = WebDriverWait(driver, 30).until(
+                        EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'submit') and contains(@class, 'btn') and contains(text(), '发布评论')]"))
+                    )
+                    driver.execute_script("arguments[0].scrollIntoView(true);", submit_button)
+                    time.sleep(0.5)
+                    submit_button.click()
+                    
+                    print(f"已在帖子 {post_url} 中完成评论：{input_text}")
+                    comment_count += 1
+                    
+                    with open('comment_log.txt', 'a', encoding='utf-8') as f:
+                        f.write(f"{time.ctime()}: Commented on {post_url} with '{input_text}'\n")
+                
+                if action_type in ['like_only', 'both'] and not is_chicken_leg:
                     is_chicken_leg = click_chicken_leg(driver)
                 
-                # 等待 CodeMirror 编辑器加载
-                editor = WebDriverWait(driver, 30).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, '.CodeMirror'))
-                )
-                
-                # 点击编辑器区域获取焦点
-                editor.click()
-                time.sleep(0.5)
-                input_text = random.choice(randomInputStr)
-
-                # 模拟输入
-                actions = ActionChains(driver)
-                # 随机输入 randomInputStr
-                for char in input_text:
-                    actions.send_keys(char)
-                    actions.pause(random.uniform(0.1, 0.3))
-                actions.perform()
-                
-                # 等待一下确保内容已经输入
-                time.sleep(2)
-                
-                # 使用更精确的选择器定位提交按钮
-                submit_button = WebDriverWait(driver, 30).until(
-                 EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'submit') and contains(@class, 'btn') and contains(text(), '发布评论')]"))
-                )
-                # 确保按钮可见并可点击
-                driver.execute_script("arguments[0].scrollIntoView(true);", submit_button)
-                time.sleep(0.5)
-                submit_button.click()
-                
-                print(f"已在帖子 {post_url} 中完成评论")
-                
-                # 返回交易区
-                # driver.get(target_url)
-                # time.sleep(2)  # 等待页面加载
-                time.sleep(random.uniform(120,240))
+                time.sleep(random.uniform(300, 600))  # 5-10 分钟
                 
             except Exception as e:
-                print(f"处理帖子时出错: {str(e)}")
+                print(f"处理帖子 {post_url} 时出错：{str(e)}")
                 continue
                 
-        print("NodeSeek评论任务完成")
+        print("NodeSeek 评论任务完成")
                 
     except Exception as e:
-        print(f"NodeSeek评论出错: {str(e)}")
-        print("详细错误信息:")
-        print(traceback.format_exc())
+        print(f"NodeSeek 评论出错：{str(e)}")
+        traceback.print_exc()
 
 def click_chicken_leg(driver):
     try:
@@ -254,16 +292,14 @@ def click_chicken_leg(driver):
         chicken_btn.click()
         print("加鸡腿按钮点击成功")
         
-        # 等待确认对话框出现
         WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, '.msc-confirm'))
         )
         
-        # 检查是否是7天前的帖子
         try:
-            error_title = driver.find_element(By.XPATH, "//h3[contains(text(), '该评论创建于7天前')]")
+            error_title = driver.find_element(By.XPATH, "//h3[contains(text(), 'This comment was created 7 days ago')]")
             if error_title:
-                print("该帖子超过7天，无法加鸡腿")
+                print("帖子超过 7 天，无法加鸡腿")
                 ok_btn = driver.find_element(By.CSS_SELECTOR, '.msc-confirm .msc-ok')
                 ok_btn.click()
                 return False
@@ -273,21 +309,20 @@ def click_chicken_leg(driver):
             )
             ok_btn.click()
             print("确认加鸡腿成功")
-            
-        # 等待确认对话框消失
+        
         WebDriverWait(driver, 5).until_not(
             EC.presence_of_element_located((By.CSS_SELECTOR, '.msc-overlay'))
         )
-        time.sleep(1)  # 额外等待以确保对话框完全消失
+        time.sleep(1)
         
         return True
         
     except Exception as e:
-        print(f"加鸡腿操作失败: {str(e)}")
+        print(f"加鸡腿失败：{str(e)}")
         return False
 
 if __name__ == "__main__":
-    print("开始执行NodeSeek评论脚本...")
+    print("开始执行 NodeSeek 评论脚本...")
     driver = setup_driver_and_cookies()
     if not driver:
         print("浏览器初始化失败")
@@ -295,6 +330,3 @@ if __name__ == "__main__":
     nodeseek_comment(driver)
     click_sign_icon(driver)
     print("脚本执行完成")
-    # while True:
-    #     time.sleep(1)
-
