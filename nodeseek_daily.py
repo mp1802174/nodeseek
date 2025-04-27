@@ -217,7 +217,7 @@ def setup_driver_and_cookies():
 def nodeseek_comment(driver):
     try:
         print("正在访问交易区...")
-        target_url = 'https://www.nodeseek.com/categories/trade'
+        target_url = 'https://www.nodeseek.com/'
         driver.get(target_url)
         print("等待页面加载...")
         
