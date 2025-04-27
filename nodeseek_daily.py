@@ -275,7 +275,7 @@ def nodeseek_comment(driver):
                 if action_type in ['like_only', 'both'] and not is_chicken_leg:
                     is_chicken_leg = click_chicken_leg(driver)
                 
-                time.sleep(random.uniform(300, 600))  # 5-10 分钟
+                time.sleep(random.uniform(600, 900))  # 10-15 分钟
                 
             except Exception as e:
                 print(f"处理帖子 {post_url} 时出错：{str(e)}")
