@@ -227,7 +227,7 @@ def nodeseek_comment(driver):
         print(f"成功获取到 {len(posts)} 个帖子")
         
         valid_posts = [post for post in posts if not post.find_elements(By.CSS_SELECTOR, '.pined')]
-        selected_posts = random.sample(valid_posts, min(random.randint(5, 10), len(valid_posts)))
+        selected_posts = random.sample(valid_posts, min(random.randint(20, 25), len(valid_posts)))
         
         selected_urls = []
         for post in selected_posts:
@@ -239,7 +239,7 @@ def nodeseek_comment(driver):
         
         is_chicken_leg = False
         comment_count = 0
-        MAX_DAILY_COMMENTS = 20
+        MAX_DAILY_COMMENTS = random.randint(20, 25)  # 修改为 20 到 25 次之间
         
         for i, post_url in enumerate(selected_urls):
             if comment_count >= MAX_DAILY_COMMENTS:
@@ -299,8 +299,8 @@ def nodeseek_comment(driver):
                     with open('comment_log.txt', 'a', encoding='utf-8') as f:
                         f.write(f"{time.ctime()}: Commented on {post_url} with '{input_text}'\n")
                 
-                if action_type in ['like_only', 'both'] and not is_chicken_leg:
-                    is_chicken_leg = click_chicken_leg(driver)
+               # if action_type in ['like_only', 'both'] and not is_chicken_leg:
+               #     is_chicken_leg = click_chicken_leg(driver)
                 
                 time.sleep(random.uniform(600, 900))  # 10-15 分钟
                 
