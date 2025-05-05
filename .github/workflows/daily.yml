@@ -3,7 +3,7 @@ name: NodeSeek 自动签到评论加鸡腿
 on:
   push:
     branches:
-      - main
+      - mp1802174-patch-1
   schedule:
     - cron: '00 16 * * *'  # UTC 16:00，即北京时间 00:00
   workflow_dispatch: # 添加手动触发（如果需要）
