@@ -47,7 +47,7 @@ def get_gemini_reply(post_title, post_content):
         - “思路很清晰”
         """
 
-        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent" # Using updated model name
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent" # Using updated model name
         headers = {
             "Content-Type": "application/json"
         }
