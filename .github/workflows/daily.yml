@@ -25,7 +25,7 @@ jobs:
       - name: Set up Chrome and ChromeDriver
         uses: browser-actions/setup-chrome@latest
         with:
-          chrome-version: stable # 安装稳定版 Chrome 和匹配的 ChromeDriver
+          chrome-version: 138 # 安装稳定版 Chrome 和匹配的 ChromeDriver
       
       # --- 移除 apt-get 安装步骤 ---
       # - name: Install Chrome and Xvfb
