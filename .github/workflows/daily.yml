@@ -26,13 +26,7 @@ jobs:
         uses: browser-actions/setup-chrome@latest
         with:
           chrome-version: stable # 安装稳定版 Chrome 和匹配的 ChromeDriver
-      - name: 手动安装匹配的 ChromeDriver 137
-        run: |
-          wget https://storage.googleapis.com/chrome-for-testing-public/137.0.7151.119/linux64/chromedriver-linux64.zip
-          unzip chromedriver-linux64.zip
-          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
-          sudo chmod +x /usr/local/bin/chromedriver
-
+      
       # --- 移除 apt-get 安装步骤 ---
       # - name: Install Chrome and Xvfb
       #   run: |
