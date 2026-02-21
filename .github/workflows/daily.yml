@@ -24,6 +24,8 @@ jobs:
       # --- 使用 setup-chrome Action 安装浏览器和驱动 ---
       - name: Set up Chrome and ChromeDriver
         uses: browser-actions/setup-chrome@latest
+        with:
+          chrome-version: stable
       
       #- name: Set up Chrome and ChromeDriver
       #  uses: browser-actions/setup-chrome@latest
