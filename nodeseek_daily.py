@@ -39,6 +39,49 @@ print(f"NS_COOKIE loaded: {'Set' if cookie else 'Not set'}")
 print(f"HEADLESS: {headless}")
 print(f"NS_RANDOM: {ns_random}")
 
+def check_lottery_ended(post_title, post_content):
+    """
+    使用 Gemini 判断抽奖是否已开奖
+    返回 True 表示已开奖，False 表示未开奖
+    """
+    try:
+        if not GEMINI_API_KEY:
+            return False  # 无法判断时默认未开奖
+        
+        prompt = f"""
+判断这个抽奖帖子是否已经开奖或结束。
+
+标题：{post_title}
+内容：{post_content}
+
+规则：
+1. 如果标题或内容明确说明"已开奖"、"开奖结束"、"活动结束"、"已截止"等，回复"是"
+2. 如果没有明确说明已结束，回复"否"
+3. 只回复"是"或"否"，不要其他内容
+
+回复：
+"""
+        
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+        headers = {"Content-Type": "application/json"}
+        data = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }]
+        }
+        
+        response = requests.post(f"{url}?key={GEMINI_API_KEY}", headers=headers, json=data, timeout=10)
+        response.raise_for_status()
+        
+        result = response.json()
+        reply = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+        
+        return reply == "是"
+        
+    except Exception as e:
+        print(f"判断抽奖状态出错：{str(e)}")
+        return False  # 出错时默认未开奖
+
 def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=None):
     """
     调用 Gemini API 根据帖子内容生成自然回复，失败时返回 None
@@ -408,6 +451,12 @@ def nodeseek_comment(driver):
                 time.sleep(random.uniform(2, 4))
                 
                 post_title, post_content = extract_post_content(driver)
+                
+                # 使用 Gemini 判断是否已开奖
+                if check_lottery_ended(post_title, post_content):
+                    print(f"帖子 {lurl} 已开奖，跳过")
+                    continue
+                
                 # 使用抽奖模式生成回复
                 input_text = get_gemini_reply(post_title, post_content, is_lottery=True, recent_replies=recent_replies)
                 if input_text is None:
