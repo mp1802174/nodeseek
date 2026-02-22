@@ -405,11 +405,22 @@ def click_chicken_leg(driver):
         return False
 
 if __name__ == "__main__":
-    print("开始执行 NodeSeek 评论脚本...")
+    print("=== 开始执行 NodeSeek 评论脚本 ===")
+    print(f"时间戳: {time.time()}")
+    
+    print("\n步骤 1: 初始化浏览器和设置 Cookie...")
     driver = setup_driver_and_cookies()
     if not driver:
         print("浏览器初始化失败")
         exit(1)
+    print(f"浏览器初始化成功，时间戳: {time.time()}")
+    
+    print("\n步骤 2: 执行评论任务...")
     nodeseek_comment(driver)
+    print(f"评论任务完成，时间戳: {time.time()}")
+    
+    print("\n步骤 3: 执行签到任务...")
     click_sign_icon(driver)
-    print("脚本执行完成")
+    print(f"签到任务完成，时间戳: {time.time()}")
+    
+    print("\n=== 脚本执行完成 ===")

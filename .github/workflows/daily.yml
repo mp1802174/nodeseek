@@ -73,4 +73,4 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           HEADLESS: "true"
         run: |
-          python nodeseek_daily.py
+          python -u nodeseek_daily.py
