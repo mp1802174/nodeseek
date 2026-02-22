@@ -38,25 +38,17 @@ jobs:
           
           # 下载匹配的 ChromeDriver
           echo "Downloading ChromeDriver for Chrome $CHROME_MAJOR_VERSION..."
-          wget -q https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json -O versions.json
           
-          # 查找匹配版本的 ChromeDriver
-          CHROMEDRIVER_URL=$(python3 -c "
-import json
-import sys
-with open('versions.json') as f:
-    data = json.load(f)
-    for version in data['versions']:
-        if version['version'].startswith('$CHROME_MAJOR_VERSION.'):
-            for download in version.get('downloads', {}).get('chromedriver', []):
-                if download['platform'] == 'linux64':
-                    print(download['url'])
-                    sys.exit(0)
-")
+          # 直接使用 jq 查找匹配版本
+          wget -q https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json -O versions.json
+          sudo apt-get install -y jq
+          
+          # 查找最新的匹配版本
+          CHROMEDRIVER_URL=$(jq -r --arg major "$CHROME_MAJOR_VERSION" '.versions[] | select(.version | startswith($major + ".")) | .downloads.chromedriver[]? | select(.platform == "linux64") | .url' versions.json | tail -1)
           
           if [ -z "$CHROMEDRIVER_URL" ]; then
-            echo "未找到匹配的 ChromeDriver，使用最新版本"
-            CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/$CHROME_MAJOR_VERSION.0.0.0/linux64/chromedriver-linux64.zip"
+            echo "未找到匹配的 ChromeDriver"
+            exit 1
           fi
           
           echo "ChromeDriver URL: $CHROMEDRIVER_URL"
