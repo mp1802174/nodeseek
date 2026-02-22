@@ -173,15 +173,6 @@ def setup_driver_and_cookies():
             return None
             
         print("开始初始化浏览器...")
-        options = uc.ChromeOptions()
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-blink-features=AutomationControlled')
-        if headless:
-            options.add_argument('--headless=new')
-            options.add_argument('--disable-gpu')
-            options.add_argument('--window-size=1920,1080')
-            options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36')
         
         # 添加重试机制
         driver = None
@@ -189,6 +180,18 @@ def setup_driver_and_cookies():
         for attempt in range(max_retries):
             try:
                 print(f"尝试初始化浏览器 (尝试 {attempt + 1}/{max_retries})...")
+                
+                # 每次重试都创建新的 ChromeOptions 对象
+                options = uc.ChromeOptions()
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                options.add_argument('--disable-blink-features=AutomationControlled')
+                if headless:
+                    options.add_argument('--headless=new')
+                    options.add_argument('--disable-gpu')
+                    options.add_argument('--window-size=1920,1080')
+                    options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36')
+                
                 driver = uc.Chrome(options=options, version_main=None)
                 print("浏览器初始化成功")
                 break
