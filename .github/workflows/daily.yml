@@ -20,13 +20,54 @@ jobs:
         with:
           python-version: '3.11.8'
 
-      - name: Setup Chrome
-        uses: browser-actions/setup-chrome@latest
-      
-      - name: Check Chrome version
+      - name: Setup Chrome and ChromeDriver
         run: |
-          echo "Chrome version:"
-          google-chrome --version
+          # 安装 Chrome 稳定版
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          
+          # 获取 Chrome 版本
+          CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+')
+          echo "Chrome version: $CHROME_VERSION"
+          
+          # 提取主版本号
+          CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d. -f1)
+          echo "Chrome major version: $CHROME_MAJOR_VERSION"
+          
+          # 下载匹配的 ChromeDriver
+          echo "Downloading ChromeDriver for Chrome $CHROME_MAJOR_VERSION..."
+          wget -q https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json -O versions.json
+          
+          # 查找匹配版本的 ChromeDriver
+          CHROMEDRIVER_URL=$(python3 -c "
+import json
+import sys
+with open('versions.json') as f:
+    data = json.load(f)
+    for version in data['versions']:
+        if version['version'].startswith('$CHROME_MAJOR_VERSION.'):
+            for download in version.get('downloads', {}).get('chromedriver', []):
+                if download['platform'] == 'linux64':
+                    print(download['url'])
+                    sys.exit(0)
+")
+          
+          if [ -z "$CHROMEDRIVER_URL" ]; then
+            echo "未找到匹配的 ChromeDriver，使用最新版本"
+            CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/$CHROME_MAJOR_VERSION.0.0.0/linux64/chromedriver-linux64.zip"
+          fi
+          
+          echo "ChromeDriver URL: $CHROMEDRIVER_URL"
+          wget -q "$CHROMEDRIVER_URL" -O chromedriver.zip
+          unzip -q chromedriver.zip
+          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
+          sudo chmod +x /usr/local/bin/chromedriver
+          
+          # 验证版本
+          echo "ChromeDriver version:"
+          chromedriver --version
 
       - name: Install Python dependencies
         run: |
