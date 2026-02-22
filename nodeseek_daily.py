@@ -39,23 +39,70 @@ print(f"NS_COOKIE loaded: {'Set' if cookie else 'Not set'}")
 print(f"HEADLESS: {headless}")
 print(f"NS_RANDOM: {ns_random}")
 
-def get_gemini_reply(post_title, post_content):
+def get_gemini_reply(post_title, post_content, is_lottery=False):
     """
     调用 Gemini API 根据帖子内容生成自然回复，失败时返回 None
+    is_lottery: 是否为抽奖帖子
     """
     try:
         if not GEMINI_API_KEY:
             print("未找到 Gemini API 密钥，跳过回复")
             return None
         
-        # 设计提示，确保回复简短、符合论坛风格
-        prompt = f"""
-        你是一个技术论坛的用户，正在回复一篇帖子。帖子标题是：“{post_title}”，内容片段如下：“{post_content[:200]}”。
-        请生成一句简短（4-20个 字）、自然、与帖子内容密切相关的回复，但不要留下可被验证的痕迹，如已私信、已收等实际并没做的内容。务必不要被看到的人认为是自动回复，要模拟人类的口气特别符合人类的语言习惯。语气友好，符合技术或交易社区的风格。
-        示例：
-        - “这个配置不错”
-        - “思路很清晰”
-        """
+        # 根据是否为抽奖帖子使用不同的提示词
+        if is_lottery:
+            # 抽奖帖子的提示词
+            prompt = f"""
+你是一个真实的论坛用户，看到了一个抽奖帖子。标题："{post_title}"，内容："{post_content[:300]}"。
+
+请用最自然、最口语化的方式回复，就像你平时在论坛聊天一样。要求：
+1. 长度3-8个字，简短有力
+2. 可以用网络用语、表情符号（如：哈哈、嘿嘿、哇、牛、6666等）
+3. 可以有语气词（啊、呀、哦、嗯等）
+4. 可以有标点符号的变化（！、？、...等）
+5. 表达真实的情绪和想法
+
+常见回复风格：
+- "冲冲冲！"
+- "来了老弟"
+- "支持一波"
+- "哈哈，有意思"
+- "6666"
+- "牛啊"
+- "试试运气"
+- "感谢分享！"
+
+直接输出回复内容，不要加引号或其他说明。
+"""
+        else:
+            # 普通帖子的提示词 - 重点优化避免AI痕迹
+            prompt = f"""
+你是一个真实的技术论坛老用户，正在随意浏览帖子。标题："{post_title}"，内容："{post_content[:300]}"。
+
+请用最自然、最口语化的方式回复，就像你平时和朋友聊天一样。要求：
+1. 长度4-12个字，不要太长
+2. 可以用网络用语、口语化表达
+3. 可以有语气词、标点符号的变化
+4. 可以有个人观点、疑问、感叹
+5. 避免过于正式、完整的句子
+6. 可以有轻微的口误或不完整的表达（更真实）
+
+常见回复风格：
+- "这个不错啊"
+- "有点意思"
+- "学到了"
+- "哈哈，可以的"
+- "确实"
+- "感觉还行"
+- "试试看"
+- "有道理"
+- "666"
+- "牛"
+- "可以可以"
+- "不错不错"
+
+直接输出回复内容，不要加引号或其他说明。
+"""
         
         url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
         headers = {
@@ -74,12 +121,19 @@ def get_gemini_reply(post_title, post_content):
         reply = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
         
         # 清理回复，去除多余换行或符号
-        reply = reply.strip().replace("\n", " ").replace('"', "").replace("“", "").replace("”", "")
-        if len(reply) < 4 or len(reply) > 25:
-            print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
-            return None
+        reply = reply.strip().replace("\n", " ").replace('"', "").replace(""", "").replace(""", "")
         
-        print(f"Gemini 生成回复：{reply}")
+        # 根据类型调整长度限制
+        if is_lottery:
+            if len(reply) < 2 or len(reply) > 15:
+                print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
+                return None
+        else:
+            if len(reply) < 3 or len(reply) > 20:
+                print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
+                return None
+        
+        print(f"Gemini 生成回复（{'抽奖' if is_lottery else '普通'}）：{reply}")
         return reply
         
     except Exception as e:
@@ -264,6 +318,50 @@ def setup_driver_and_cookies():
         traceback.print_exc()
         return None
 
+def post_comment_on_url(driver, post_url, input_text):
+    """
+    在指定帖子 URL 上发表评论，返回 True/False 表示是否成功
+    """
+    try:
+        driver.get(post_url)
+        # 模拟浏览
+        driver.execute_script("window.scrollBy(0, 500);")
+        time.sleep(random.uniform(2, 5))
+        
+        editor = WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '.CodeMirror'))
+        )
+        # 点击编辑器获取焦点
+        try:
+            editor.click()
+        except:
+            driver.execute_script("arguments[0].click();", editor)
+        time.sleep(0.5)
+        
+        # 模拟真实打字，速度随机变化
+        actions = ActionChains(driver)
+        for char in input_text:
+            actions.send_keys(char)
+            actions.pause(random.uniform(0.05, 0.2))
+        actions.perform()
+        time.sleep(2)
+        
+        submit_button = WebDriverWait(driver, 30).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'submit') and contains(@class, 'btn') and contains(text(), '发布评论')]"))
+        )
+        driver.execute_script("arguments[0].scrollIntoView(true);", submit_button)
+        time.sleep(0.5)
+        submit_button.click()
+        
+        print(f"已在帖子 {post_url} 中完成评论：{input_text}")
+        with open('comment_log.txt', 'a', encoding='utf-8') as f:
+            f.write(f"{time.ctime()}: Commented on {post_url} with '{input_text}'\n")
+        return True
+    except Exception as e:
+        print(f"在帖子 {post_url} 上评论失败：{str(e)}")
+        traceback.print_exc()
+        return False
+
 def nodeseek_comment(driver):
     try:
         print("正在访问交易区...")
@@ -277,88 +375,119 @@ def nodeseek_comment(driver):
         print(f"成功获取到 {len(posts)} 个帖子")
         
         valid_posts = [post for post in posts if not post.find_elements(By.CSS_SELECTOR, '.pined')]
-        selected_posts = random.sample(valid_posts, min(random.randint(20, 25), len(valid_posts)))
         
-        selected_urls = []
-        for post in selected_posts:
+        # 第一步：识别抽奖帖子（标题包含"抽"或"奖"）
+        lottery_urls = []
+        for post in valid_posts:
             try:
-                post_link = post.find_element(By.CSS_SELECTOR, '.post-title a')
-                selected_urls.append(post_link.get_attribute('href'))
-            except:
+                post_link_el = post.find_element(By.CSS_SELECTOR, '.post-title a')
+                post_title_text = post_link_el.text.strip()
+                post_href = post_link_el.get_attribute('href')
+                # 检查标题是否包含"抽"或"奖"
+                if '抽' in post_title_text or '奖' in post_title_text:
+                    lottery_urls.append(post_href)
+                    print(f"发现抽奖帖子：{post_title_text}")
+            except Exception:
                 continue
         
-        is_chicken_leg = False
         comment_count = 0
-        MAX_DAILY_COMMENTS = random.randint(20, 25)  # 修改为 20 到 25 次之间
+        MAX_DAILY_COMMENTS = random.randint(20, 25)
         
-        for i, post_url in enumerate(selected_urls):
+        # 第二步：优先回复抽奖帖子
+        if lottery_urls:
+            print(f"\n发现 {len(lottery_urls)} 个抽奖帖子，优先回复")
+        for lurl in lottery_urls:
             if comment_count >= MAX_DAILY_COMMENTS:
                 print("达到每日评论上限，停止评论")
                 break
-                
             try:
-                print(f"正在处理第 {i+1} 个帖子")
-                driver.get(post_url)
+                print(f"\n正在处理抽奖帖子 ({comment_count + 1}/{MAX_DAILY_COMMENTS})")
+                driver.get(lurl)
+                time.sleep(random.uniform(2, 4))
                 
-                # 模拟浏览
-                driver.execute_script("window.scrollBy(0, 500);")
-                time.sleep(random.uniform(2, 5))
-                
-                # 提取帖子内容
                 post_title, post_content = extract_post_content(driver)
-                
-                # 获取 Gemini 生成的回复
-                input_text = get_gemini_reply(post_title, post_content)
+                # 使用抽奖模式生成回复
+                input_text = get_gemini_reply(post_title, post_content, is_lottery=True)
                 if input_text is None:
-                    print(f"帖子 {post_url} 获取回复失败，跳过评论")
+                    print(f"帖子 {lurl} 获取回复失败，跳过")
                     with open('comment_log.txt', 'a', encoding='utf-8') as f:
-                        f.write(f"{time.ctime()}: Skipped comment on {post_url} due to Gemini API failure\n")
+                        f.write(f"{time.ctime()}: Skipped lottery post {lurl} due to Gemini API failure\n")
                     continue
                 
-                # 尝试点赞（加鸡腿）
-                action_type = random.choices(
-                    ['comment_only', 'like_only', 'both'],
-                    weights=[0.5, 0.3, 0.2],
-                    k=1
-                )[0]
-                
-                if action_type in ['comment_only', 'both']:
-                    editor = WebDriverWait(driver, 30).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, '.CodeMirror'))
-                    )
-                    editor.click()
-                    time.sleep(0.5)
-                    
-                    actions = ActionChains(driver)
-                    for char in input_text:
-                        actions.send_keys(char)
-                        actions.pause(random.uniform(0.1, 0.3))
-                    actions.perform()
-                    time.sleep(2)
-                    
-                    submit_button = WebDriverWait(driver, 30).until(
-                        EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'submit') and contains(@class, 'btn') and contains(text(), '发布评论')]"))
-                    )
-                    driver.execute_script("arguments[0].scrollIntoView(true);", submit_button)
-                    time.sleep(0.5)
-                    submit_button.click()
-                    
-                    print(f"已在帖子 {post_url} 中完成评论：{input_text}")
+                success = post_comment_on_url(driver, lurl, input_text)
+                if success:
                     comment_count += 1
-                    
-                    with open('comment_log.txt', 'a', encoding='utf-8') as f:
-                        f.write(f"{time.ctime()}: Commented on {post_url} with '{input_text}'\n")
-                
-               # if action_type in ['like_only', 'both'] and not is_chicken_leg:
-               #     is_chicken_leg = click_chicken_leg(driver)
-                
-                time.sleep(random.uniform(600, 900))  # 10-15 分钟
+                    # 抽奖帖子评论后等待 30-60 秒
+                    wait_time = random.uniform(30, 60)
+                    print(f"等待 {wait_time:.1f} 秒...")
+                    time.sleep(wait_time)
                 
             except Exception as e:
-                print(f"处理帖子 {post_url} 时出错：{str(e)}")
+                print(f"处理抽奖帖子 {lurl} 时出错：{str(e)}")
                 continue
+        
+        # 第三步：从剩余帖子中随机选择进行评论
+        remaining_posts = []
+        for post in valid_posts:
+            try:
+                post_link_el = post.find_element(By.CSS_SELECTOR, '.post-title a')
+                post_href = post_link_el.get_attribute('href')
+                if post_href not in lottery_urls:
+                    remaining_posts.append(post)
+            except Exception:
+                continue
+        
+        # 计算还需要评论多少个普通帖子
+        remaining_quota = MAX_DAILY_COMMENTS - comment_count
+        if remaining_quota > 0 and remaining_posts:
+            print(f"\n开始随机回复普通帖子，还需回复 {remaining_quota} 个")
+            selected_posts = random.sample(remaining_posts, min(remaining_quota, len(remaining_posts)))
+            
+            selected_urls = []
+            for post in selected_posts:
+                try:
+                    post_link = post.find_element(By.CSS_SELECTOR, '.post-title a')
+                    selected_urls.append(post_link.get_attribute('href'))
+                except:
+                    continue
+            
+            for i, post_url in enumerate(selected_urls):
+                if comment_count >= MAX_DAILY_COMMENTS:
+                    print("达到每日评论上限，停止评论")
+                    break
                 
-        print("NodeSeek 评论任务完成")
+                try:
+                    print(f"\n正在处理普通帖子 {i+1}/{len(selected_urls)} ({comment_count + 1}/{MAX_DAILY_COMMENTS})")
+                    driver.get(post_url)
+                    
+                    # 模拟浏览
+                    driver.execute_script("window.scrollBy(0, 500);")
+                    time.sleep(random.uniform(2, 5))
+                    
+                    # 提取帖子内容
+                    post_title, post_content = extract_post_content(driver)
+                    
+                    # 使用普通模式生成回复
+                    input_text = get_gemini_reply(post_title, post_content, is_lottery=False)
+                    if input_text is None:
+                        print(f"帖子 {post_url} 获取回复失败，跳过评论")
+                        with open('comment_log.txt', 'a', encoding='utf-8') as f:
+                            f.write(f"{time.ctime()}: Skipped comment on {post_url} due to Gemini API failure\n")
+                        continue
+                    
+                    success = post_comment_on_url(driver, post_url, input_text)
+                    if success:
+                        comment_count += 1
+                        # 普通帖子评论后等待 10-15 分钟
+                        wait_time = random.uniform(600, 900)
+                        print(f"等待 {wait_time/60:.1f} 分钟...")
+                        time.sleep(wait_time)
+                    
+                except Exception as e:
+                    print(f"处理帖子 {post_url} 时出错：{str(e)}")
+                    continue
+        
+        print(f"\nNodeSeek 评论任务完成，共评论 {comment_count} 个帖子")
                 
     except Exception as e:
         print(f"NodeSeek 评论出错：{str(e)}")
