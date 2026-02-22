@@ -54,66 +54,49 @@ def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=
         
         # 根据是否为抽奖帖子使用不同的提示词
         if is_lottery:
-            # 抽奖帖子的提示词 - 重点关注回复要求
+            # 抽奖帖子的提示词 - 极简回复
             prompt = f"""
-你是一个真实的论坛用户，看到了一个抽奖帖子。
+你是一个懒得打字的论坛用户，看到抽奖帖子想参与。
 
-标题："{post_title}"
-内容："{post_content[:500]}"
+标题：{post_title}
+内容前100字：{post_content[:100]}
 
-任务：仔细阅读帖子内容，生成一个合适的回复。
+规则：
+1. 如果帖子明确要求回复特定内容（如"回复'XXX'参与"），必须一字不差地回复那个内容
+2. 如果没有要求，生成3-8个字的极简回复
+3. 真人参与抽奖都很懒，不会写长句子
+4. 不要用"看起来"、"感觉"、"支持"这类AI词汇
+5. 可以用：冲、蹲、来了、试试、抽个、参与
 
-重要规则：
-1. **优先检查是否有明确的回复要求**，例如：
-   - "回复本帖'XXX'即可"
-   - "评论'XXX'参与抽奖"
-   - "回复：XXX"
-   如果有这样的要求，**必须严格按照要求回复指定内容**，一字不差。
+示例（仅供参考，不要照抄）：
+- 抽奖帖："冲"、"蹲一个"、"来了"、"试试运气"
+- 不要："看起来不错"、"支持一下"、"感谢分享"
 
-2. 如果没有明确的回复要求，则根据帖子内容生成一个简短、自然的回复：
-   - 长度：3-50个字
-   - 必须与帖子内容相关
-   - 可以表达感谢、兴趣、支持等
-   - 可以用口语化表达，但要有意义
-   - 例如："感谢分享"、"支持一下"、"不错的活动"
-
-3. 避免无意义的通用回复，如单纯的"冲冲冲"、"6666"等
-
-直接输出回复内容，不要加引号或其他说明。
+只输出回复内容，不要任何解释。
 """
         else:
-            # 普通帖子的提示词 - 必须与内容相关
+            # 普通帖子的提示词 - 简短相关
             prompt = f"""
-你是一个真实的技术论坛老用户，正在浏览帖子。
+你是论坛老用户，看帖后随手回复。
 
-标题："{post_title}"
-内容："{post_content[:500]}"
+标题：{post_title}
+内容前200字：{post_content[:200]}
 
-任务：根据帖子内容生成一个自然、相关的回复。
+规则：
+1. 必须理解帖子内容，回复要相关
+2. 5-15个字，简短自然
+3. 不要AI式客套话（如"看起来"、"感觉"、"非常"）
+4. 根据内容类型回复：
+   - 技术/教程：学到了、有用、试试
+   - 出售/交易：多少钱、配置如何、价格
+   - 求助：我也遇到过、试试XX
+   - 分享：不错、可以
 
-重要规则：
-1. **回复必须与帖子内容相关**，不能是通用的无意义回复
-2. 长度：3-50个字
-3. 用口语化、自然的表达方式
-4. 可以：
-   - 表达观点："这个方案不错"、"确实有道理"
-   - 提出疑问："这个怎么配置"、"价格多少"
-   - 表示认同："学到了"、"有用"
-   - 分享经验："我也遇到过"、"试过类似的"
-5. 避免：
-   - 过于正式的完整句子
-   - 通用的无意义回复（如单纯的"666"、"牛"）
-   - AI 式的客套话
-
-回复风格示例（根据实际内容调整）：
-- 技术帖："这个方案可以"、"学到了"、"有用"
-- 交易帖："价格还行"、"感兴趣"、"配置不错"
-- 求助帖："试试这个"、"我也遇到过"
-
-直接输出回复内容，不要加引号或其他说明。
+不要生成与内容无关的通用回复。
+只输出回复内容。
 """
         
-        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
         headers = {
             "Content-Type": "application/json"
         }
@@ -132,10 +115,17 @@ def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=
         # 清理回复，去除多余换行或符号
         reply = reply.strip().replace("\n", " ").replace('"', "").replace(""", "").replace(""", "")
         
-        # 统一长度限制为3-50字
-        if len(reply) < 3 or len(reply) > 50:
-            print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
-            return None
+        # 根据类型调整长度限制
+        if is_lottery:
+            # 抽奖帖子：3-15字（除非有明确要求）
+            if len(reply) < 2 or len(reply) > 20:
+                print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
+                return None
+        else:
+            # 普通帖子：3-20字
+            if len(reply) < 3 or len(reply) > 20:
+                print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
+                return None
         
         # 检查是否与最近的回复重复
         if recent_replies and reply in recent_replies:
