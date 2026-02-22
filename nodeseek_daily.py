@@ -4,18 +4,27 @@ Copyright (c) 2024 [Hosea]
 Licensed under the MIT License.
 See LICENSE file in the project root for full license information.
 """
+print("=== 脚本开始执行 ===")
+import sys
+print(f"Python 版本: {sys.version}")
+
+print("导入标准库...")
 import os
 import requests
 from bs4 import BeautifulSoup
+print("导入 Selenium...")
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import random
 import time
 import traceback
+print("导入 undetected-chromedriver...")
 import undetected_chromedriver as uc
+print(f"undetected-chromedriver 版本: {uc.__version__}")
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
+print("所有库导入完成")
 
 
 # 环境变量
