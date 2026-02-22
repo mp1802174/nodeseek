@@ -129,15 +129,10 @@ def get_gemini_reply(post_title, post_content, is_lottery=False):
         # 清理回复，去除多余换行或符号
         reply = reply.strip().replace("\n", " ").replace('"', "").replace(""", "").replace(""", "")
         
-        # 根据类型调整长度限制
-        if is_lottery:
-            if len(reply) < 2 or len(reply) > 15:
-                print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
-                return None
-        else:
-            if len(reply) < 3 or len(reply) > 20:
-                print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
-                return None
+        # 统一长度限制为5-30字
+        if len(reply) < 5 or len(reply) > 30:
+            print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
+            return None
         
         print(f"Gemini 生成回复（{'抽奖' if is_lottery else '普通'}）：{reply}")
         return reply
