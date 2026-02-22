@@ -499,46 +499,6 @@ def nodeseek_comment(driver):
         print(f"NodeSeek 评论出错：{str(e)}")
         traceback.print_exc()
 
-def click_chicken_leg(driver):
-    try:
-        print("尝试点击加鸡腿按钮...")
-        chicken_btn = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, '//div[@class="nsk-post"]//div[@title="加鸡腿"][1]'))
-        )
-        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", chicken_btn)
-        time.sleep(0.5)
-        chicken_btn.click()
-        print("加鸡腿按钮点击成功")
-        
-        WebDriverWait(driver, 5).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, '.msc-confirm'))
-        )
-        
-        try:
-            error_title = driver.find_element(By.XPATH, "//h3[contains(text(), 'This comment was created 7 days ago')]")
-            if error_title:
-                print("帖子超过 7 天，无法加鸡腿")
-                ok_btn = driver.find_element(By.CSS_SELECTOR, '.msc-confirm .msc-ok')
-                ok_btn.click()
-                return False
-        except:
-            ok_btn = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, '.msc-confirm .msc-ok'))
-            )
-            ok_btn.click()
-            print("确认加鸡腿成功")
-        
-        WebDriverWait(driver, 5).until_not(
-            EC.presence_of_element_located((By.CSS_SELECTOR, '.msc-overlay'))
-        )
-        time.sleep(1)
-        
-        return True
-        
-    except Exception as e:
-        print(f"加鸡腿失败：{str(e)}")
-        return False
-
 if __name__ == "__main__":
     print("=== 开始执行 NodeSeek 评论脚本 ===")
     print(f"时间戳: {time.time()}")
