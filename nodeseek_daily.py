@@ -17,10 +17,6 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 
-try:
-    from webdriver_manager.chrome import ChromeDriverManager
-except ImportError:
-    ChromeDriverManager = None
 
 # 环境变量
 ns_random = os.environ.get("NS_RANDOM", "false")
@@ -179,16 +175,6 @@ def setup_driver_and_cookies():
             
         print("开始初始化浏览器...")
         
-        # 尝试使用 webdriver-manager 获取匹配的 ChromeDriver
-        driver_path = None
-        if ChromeDriverManager:
-            try:
-                print("正在使用 WebDriver Manager 获取匹配的 ChromeDriver...")
-                driver_path = ChromeDriverManager().install()
-                print(f"ChromeDriver 路径: {driver_path}")
-            except Exception as e:
-                print(f"WebDriver Manager 获取驱动失败: {str(e)}")
-        
         # 添加重试机制
         driver = None
         max_retries = 3
@@ -207,11 +193,9 @@ def setup_driver_and_cookies():
                     options.add_argument('--window-size=1920,1080')
                     options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36')
                 
-                # 如果有 driver_path，使用它；否则让 undetected-chromedriver 自动检测
-                if driver_path and attempt == 0:
-                    driver = uc.Chrome(driver_executable_path=driver_path, options=options, version_main=None)
-                else:
-                    driver = uc.Chrome(options=options, version_main=None)
+                # 使用 undetected-chromedriver 的自动检测功能
+                print("使用 undetected-chromedriver 自动检测 Chrome 版本...")
+                driver = uc.Chrome(options=options, version_main=None)
                 
                 print("浏览器初始化成功")
                 break
