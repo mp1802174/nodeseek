@@ -20,22 +20,13 @@ jobs:
         with:
           python-version: '3.11.8'
 
-      - name: Setup Chrome 145
+      - name: Setup Chrome
         uses: browser-actions/setup-chrome@latest
-        with:
-          chrome-version: 145
       
-      - name: Setup ChromeDriver
-        uses: nanasess/setup-chromedriver@master
-        with:
-          chromedriver-version: '145.0.7559.0'
-      
-      - name: Check Chrome and ChromeDriver versions
+      - name: Check Chrome version
         run: |
           echo "Chrome version:"
           google-chrome --version
-          echo "ChromeDriver version:"
-          chromedriver --version
 
       - name: Install Python dependencies
         run: |
