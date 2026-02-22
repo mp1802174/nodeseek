@@ -398,6 +398,7 @@ def nodeseek_comment(driver):
         
         comment_count = 0
         MAX_DAILY_COMMENTS = random.randint(20, 25)
+        commented_urls = set()  # 跟踪已回复的帖子URL，避免重复
         
         # 第二步：优先回复抽奖帖子
         if lottery_urls:
@@ -423,6 +424,7 @@ def nodeseek_comment(driver):
                 success = post_comment_on_url(driver, lurl, input_text)
                 if success:
                     comment_count += 1
+                    commented_urls.add(lurl)  # 记录已回复的URL
                     # 抽奖帖子评论后等待 30-60 秒
                     wait_time = random.uniform(30, 60)
                     print(f"等待 {wait_time:.1f} 秒...")
@@ -445,13 +447,14 @@ def nodeseek_comment(driver):
             )
             valid_posts_refresh = [post for post in posts if not post.find_elements(By.CSS_SELECTOR, '.pined')]
             
-            # 筛选出非抽奖帖子
+            # 筛选出未回复过的帖子（排除抽奖帖子和已回复的帖子）
             remaining_urls = []
             for post in valid_posts_refresh:
                 try:
                     post_link_el = post.find_element(By.CSS_SELECTOR, '.post-title a')
                     post_href = post_link_el.get_attribute('href')
-                    if post_href not in lottery_urls:
+                    # 排除已回复的帖子
+                    if post_href not in commented_urls:
                         remaining_urls.append(post_href)
                 except Exception:
                     continue
@@ -490,6 +493,7 @@ def nodeseek_comment(driver):
                     success = post_comment_on_url(driver, post_url, input_text)
                     if success:
                         comment_count += 1
+                        commented_urls.add(post_url)  # 记录已回复的URL
                         # 普通帖子评论后等待 10-15 分钟
                         wait_time = random.uniform(600, 900)
                         print(f"等待 {wait_time/60:.1f} 分钟...")
