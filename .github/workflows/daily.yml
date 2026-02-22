@@ -20,12 +20,20 @@ jobs:
         with:
           python-version: '3.11.8'
 
-      - name: Install Chrome and Xvfb
+      - name: Setup Chrome 145
+        uses: browser-actions/setup-chrome@latest
+        with:
+          chrome-version: 145
+      
+      - name: Setup ChromeDriver
+        uses: nanasess/setup-chromedriver@master
+        with:
+          chromedriver-version: '145.0.7559.0'
+      
+      - name: Check Chrome and ChromeDriver versions
         run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser chromium-chromedriver xvfb
           echo "Chrome version:"
-          chromium-browser --version
+          google-chrome --version
           echo "ChromeDriver version:"
           chromedriver --version
 
