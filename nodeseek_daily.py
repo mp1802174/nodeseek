@@ -423,9 +423,9 @@ def nodeseek_comment(driver):
                     recent_replies.append(input_text)  # 记录回复内容
                     if len(recent_replies) > 10:  # 只保留最近10个回复
                         recent_replies.pop(0)
-                    # 抽奖帖子评论后等待 30-60 秒
-                    wait_time = random.uniform(30, 60)
-                    print(f"等待 {wait_time:.1f} 秒...")
+                    # 抽奖帖子评论后等待 5-6 分钟
+                    wait_time = random.uniform(300, 360)
+                    print(f"等待 {wait_time/60:.1f} 分钟...")
                     time.sleep(wait_time)
                 
             except Exception as e:
