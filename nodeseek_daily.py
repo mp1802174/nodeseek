@@ -433,29 +433,35 @@ def nodeseek_comment(driver):
                 continue
         
         # 第三步：从剩余帖子中随机选择进行评论
-        remaining_posts = []
-        for post in valid_posts:
-            try:
-                post_link_el = post.find_element(By.CSS_SELECTOR, '.post-title a')
-                post_href = post_link_el.get_attribute('href')
-                if post_href not in lottery_urls:
-                    remaining_posts.append(post)
-            except Exception:
-                continue
-        
-        # 计算还需要评论多少个普通帖子
         remaining_quota = MAX_DAILY_COMMENTS - comment_count
-        if remaining_quota > 0 and remaining_posts:
+        if remaining_quota > 0:
             print(f"\n开始随机回复普通帖子，还需回复 {remaining_quota} 个")
-            selected_posts = random.sample(remaining_posts, min(remaining_quota, len(remaining_posts)))
             
-            selected_urls = []
-            for post in selected_posts:
+            # 重新访问首页获取帖子列表（因为之前的WebElement已失效）
+            driver.get(target_url)
+            time.sleep(3)
+            posts = WebDriverWait(driver, 30).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, '.post-list-item'))
+            )
+            valid_posts_refresh = [post for post in posts if not post.find_elements(By.CSS_SELECTOR, '.pined')]
+            
+            # 筛选出非抽奖帖子
+            remaining_urls = []
+            for post in valid_posts_refresh:
                 try:
-                    post_link = post.find_element(By.CSS_SELECTOR, '.post-title a')
-                    selected_urls.append(post_link.get_attribute('href'))
-                except:
+                    post_link_el = post.find_element(By.CSS_SELECTOR, '.post-title a')
+                    post_href = post_link_el.get_attribute('href')
+                    if post_href not in lottery_urls:
+                        remaining_urls.append(post_href)
+                except Exception:
                     continue
+            
+            # 随机选择需要评论的帖子
+            if remaining_urls:
+                selected_urls = random.sample(remaining_urls, min(remaining_quota, len(remaining_urls)))
+            else:
+                print("没有找到可评论的普通帖子")
+                selected_urls = []
             
             for i, post_url in enumerate(selected_urls):
                 if comment_count >= MAX_DAILY_COMMENTS:
