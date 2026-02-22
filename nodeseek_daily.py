@@ -135,16 +135,16 @@ def click_sign_icon(driver):
         
         # 点击"试试手气"按钮
         try:
-            click_button:None
+            click_button = None
             
             if ns_random:
                 click_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), '试试手气')]"))
-            )
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), '试试手气')]"))
+                )
             else:
                 click_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), '鸡腿 x 5')]"))
-            )
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), '鸡腿 x 5')]"))
+                )
             
             click_button.click()
             print("完成试试手气点击")
@@ -176,14 +176,33 @@ def setup_driver_and_cookies():
         options = uc.ChromeOptions()
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-blink-features=AutomationControlled')
         if headless:
-            options.add_argument('--headless')
-            options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_argument('--headless=new')
             options.add_argument('--disable-gpu')
             options.add_argument('--window-size=1920,1080')
-            options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36')
         
-        driver = uc.Chrome(options=options)
+        # 添加重试机制
+        driver = None
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                print(f"尝试初始化浏览器 (尝试 {attempt + 1}/{max_retries})...")
+                driver = uc.Chrome(options=options, version_main=None)
+                print("浏览器初始化成功")
+                break
+            except Exception as e:
+                print(f"初始化尝试 {attempt + 1} 失败：{str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                else:
+                    raise
+        
+        if not driver:
+            print("无法初始化浏览器")
+            return None
+        
         if headless:
             driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             driver.set_window_size(1920, 1080)
