@@ -59,7 +59,7 @@ def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=
 你是一个懒得打字的论坛用户，看到抽奖帖子想参与。
 
 标题：{post_title}
-内容前100字：{post_content[:100]}
+内容：{post_content}
 
 规则：
 1. 如果帖子明确要求回复特定内容（如"回复'XXX'参与"），必须一字不差地回复那个内容
@@ -80,7 +80,7 @@ def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=
 你是论坛老用户，看帖后随手回复。
 
 标题：{post_title}
-内容前200字：{post_content[:200]}
+内容：{post_content}
 
 规则：
 1. 必须理解帖子内容，回复要相关
