@@ -213,8 +213,13 @@ def setup_driver_and_cookies():
                     options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36')
                 
                 print("ChromeOptions 配置完成，开始创建 Chrome 实例...")
-                # 使用 undetected-chromedriver 的自动检测功能
-                driver = uc.Chrome(options=options, version_main=None, use_subprocess=True)
+                # 强制使用系统安装的 Chrome 和 ChromeDriver
+                driver = uc.Chrome(
+                    options=options,
+                    driver_executable_path='/usr/local/bin/chromedriver',
+                    browser_executable_path='/usr/bin/google-chrome',
+                    use_subprocess=True
+                )
                 
                 print(f"浏览器初始化成功，时间戳: {time.time()}")
                 break
