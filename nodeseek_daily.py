@@ -54,45 +54,45 @@ def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=
         
         # 根据是否为抽奖帖子使用不同的提示词
         if is_lottery:
-            # 抽奖帖子的提示词 - 极简回复
+            # 抽奖帖子的提示词
             prompt = f"""
-你是一个懒得打字的论坛用户，看到抽奖帖子想参与。
+你是一个普通论坛用户，看到抽奖帖子想参与。
 
 标题：{post_title}
 内容：{post_content}
 
 规则：
 1. 如果帖子明确要求回复特定内容（如"回复'XXX'参与"），必须一字不差地回复那个内容
-2. 如果没有要求，生成3-8个字的极简回复
-3. 真人参与抽奖都很懒，不会写长句子
-4. 不要用"看起来"、"感觉"、"支持"这类AI词汇
-5. 可以用：冲、蹲、来了、试试、抽个、参与
+2. 如果没有明确要求，生成5-12个字的自然回复
+3. 回复要像正常人类，不要太简短也不要太复杂
+4. 避免AI痕迹词汇："看起来"、"感觉"、"非常"、"支持"
+5. 可以表达：参与意愿、对活动的兴趣、简单评价
 
-示例（仅供参考，不要照抄）：
-- 抽奖帖："冲"、"蹲一个"、"来了"、"试试运气"
-- 不要："看起来不错"、"支持一下"、"感谢分享"
+示例风格（根据实际内容调整）：
+- "参与一下"、"试试运气"、"感谢楼主"、"不错的活动"
+- 不要：单字"冲"、"蹲"，也不要"看起来很不错，支持一下"
 
-只输出回复内容，不要任何解释。
+只输出回复内容。
 """
         else:
-            # 普通帖子的提示词 - 简短相关
+            # 普通帖子的提示词
             prompt = f"""
-你是论坛老用户，看帖后随手回复。
+你是论坛老用户，看帖后正常回复。
 
 标题：{post_title}
 内容：{post_content}
 
 规则：
 1. 必须理解帖子内容，回复要相关
-2. 5-15个字，简短自然
-3. 不要AI式客套话（如"看起来"、"感觉"、"非常"）
-4. 根据内容类型回复：
-   - 技术/教程：学到了、有用、试试
-   - 出售/交易：多少钱、配置如何、价格
-   - 求助：我也遇到过、试试XX
-   - 分享：不错、可以
+2. 6-15个字，自然流畅
+3. 像正常人类交流，不要太简短也不要太正式
+4. 避免AI痕迹词汇："看起来"、"感觉"、"非常"、"支持"
+5. 根据内容类型自然回复：
+   - 技术/教程：学到了、这个有用、可以试试
+   - 出售/交易：多少钱、配置怎么样、价格合适吗
+   - 求助：我也遇到过、可以试试这个
+   - 分享：不错、挺好的、有意思
 
-不要生成与内容无关的通用回复。
 只输出回复内容。
 """
         
@@ -115,17 +115,10 @@ def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=
         # 清理回复，去除多余换行或符号
         reply = reply.strip().replace("\n", " ").replace('"', "").replace(""", "").replace(""", "")
         
-        # 根据类型调整长度限制
-        if is_lottery:
-            # 抽奖帖子：3-15字（除非有明确要求）
-            if len(reply) < 2 or len(reply) > 20:
-                print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
-                return None
-        else:
-            # 普通帖子：3-20字
-            if len(reply) < 3 or len(reply) > 20:
-                print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
-                return None
+        # 统一长度限制：5-20字
+        if len(reply) < 5 or len(reply) > 20:
+            print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
+            return None
         
         # 检查是否与最近的回复重复
         if recent_replies and reply in recent_replies:
@@ -376,7 +369,7 @@ def nodeseek_comment(driver):
         valid_posts = [post for post in posts if not post.find_elements(By.CSS_SELECTOR, '.pined')]
         
         # 第一步：识别抽奖帖子（标题包含"抽"或"奖"）
-        lottery_urls = []
+        lottery_urls = set()  # 使用 set 避免重复
         for post in valid_posts:
             try:
                 post_link_el = post.find_element(By.CSS_SELECTOR, '.post-title a')
@@ -384,10 +377,12 @@ def nodeseek_comment(driver):
                 post_href = post_link_el.get_attribute('href')
                 # 检查标题是否包含"抽"或"奖"
                 if '抽' in post_title_text or '奖' in post_title_text:
-                    lottery_urls.append(post_href)
+                    lottery_urls.add(post_href)
                     print(f"发现抽奖帖子：{post_title_text}")
             except Exception:
                 continue
+        
+        lottery_urls = list(lottery_urls)  # 转回列表
         
         comment_count = 0
         MAX_DAILY_COMMENTS = random.randint(20, 25)
@@ -401,6 +396,12 @@ def nodeseek_comment(driver):
             if comment_count >= MAX_DAILY_COMMENTS:
                 print("达到每日评论上限，停止评论")
                 break
+            
+            # 检查是否已回复过此帖子
+            if lurl in commented_urls:
+                print(f"帖子 {lurl} 已回复过，跳过")
+                continue
+            
             try:
                 print(f"\n正在处理抽奖帖子 ({comment_count + 1}/{MAX_DAILY_COMMENTS})")
                 driver.get(lurl)
@@ -467,6 +468,11 @@ def nodeseek_comment(driver):
                 if comment_count >= MAX_DAILY_COMMENTS:
                     print("达到每日评论上限，停止评论")
                     break
+                
+                # 检查是否已回复过此帖子
+                if post_url in commented_urls:
+                    print(f"帖子 {post_url} 已回复过，跳过")
+                    continue
                 
                 try:
                     print(f"\n正在处理普通帖子 {i+1}/{len(selected_urls)} ({comment_count + 1}/{MAX_DAILY_COMMENTS})")
