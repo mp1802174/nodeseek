@@ -39,11 +39,14 @@ print(f"NS_COOKIE loaded: {'Set' if cookie else 'Not set'}")
 print(f"HEADLESS: {headless}")
 print(f"NS_RANDOM: {ns_random}")
 
-def get_gemini_reply(post_title, post_content, is_lottery=False):
+def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=None):
     """
     调用 Gemini API 根据帖子内容生成自然回复，失败时返回 None
     is_lottery: 是否为抽奖帖子
+    recent_replies: 最近使用的回复列表，用于避免重复
     """
+    if recent_replies is None:
+        recent_replies = []
     try:
         if not GEMINI_API_KEY:
             print("未找到 Gemini API 密钥，跳过回复")
@@ -68,7 +71,7 @@ def get_gemini_reply(post_title, post_content, is_lottery=False):
    如果有这样的要求，**必须严格按照要求回复指定内容**，一字不差。
 
 2. 如果没有明确的回复要求，则根据帖子内容生成一个简短、自然的回复：
-   - 长度：3-12个字
+   - 长度：3-50个字
    - 必须与帖子内容相关
    - 可以表达感谢、兴趣、支持等
    - 可以用口语化表达，但要有意义
@@ -90,7 +93,7 @@ def get_gemini_reply(post_title, post_content, is_lottery=False):
 
 重要规则：
 1. **回复必须与帖子内容相关**，不能是通用的无意义回复
-2. 长度：4-15个字
+2. 长度：3-50个字
 3. 用口语化、自然的表达方式
 4. 可以：
    - 表达观点："这个方案不错"、"确实有道理"
@@ -129,9 +132,14 @@ def get_gemini_reply(post_title, post_content, is_lottery=False):
         # 清理回复，去除多余换行或符号
         reply = reply.strip().replace("\n", " ").replace('"', "").replace(""", "").replace(""", "")
         
-        # 统一长度限制为5-30字
-        if len(reply) < 5 or len(reply) > 30:
+        # 统一长度限制为3-50字
+        if len(reply) < 3 or len(reply) > 50:
             print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
+            return None
+        
+        # 检查是否与最近的回复重复
+        if recent_replies and reply in recent_replies:
+            print(f"回复内容重复（{reply}），跳过")
             return None
         
         print(f"Gemini 生成回复（{'抽奖' if is_lottery else '普通'}）：{reply}")
@@ -394,6 +402,7 @@ def nodeseek_comment(driver):
         comment_count = 0
         MAX_DAILY_COMMENTS = random.randint(20, 25)
         commented_urls = set()  # 跟踪已回复的帖子URL，避免重复
+        recent_replies = []  # 跟踪最近的回复内容，避免重复
         
         # 第二步：优先回复抽奖帖子
         if lottery_urls:
@@ -409,7 +418,7 @@ def nodeseek_comment(driver):
                 
                 post_title, post_content = extract_post_content(driver)
                 # 使用抽奖模式生成回复
-                input_text = get_gemini_reply(post_title, post_content, is_lottery=True)
+                input_text = get_gemini_reply(post_title, post_content, is_lottery=True, recent_replies=recent_replies)
                 if input_text is None:
                     print(f"帖子 {lurl} 获取回复失败，跳过")
                     with open('comment_log.txt', 'a', encoding='utf-8') as f:
@@ -420,6 +429,9 @@ def nodeseek_comment(driver):
                 if success:
                     comment_count += 1
                     commented_urls.add(lurl)  # 记录已回复的URL
+                    recent_replies.append(input_text)  # 记录回复内容
+                    if len(recent_replies) > 10:  # 只保留最近10个回复
+                        recent_replies.pop(0)
                     # 抽奖帖子评论后等待 30-60 秒
                     wait_time = random.uniform(30, 60)
                     print(f"等待 {wait_time:.1f} 秒...")
@@ -478,7 +490,7 @@ def nodeseek_comment(driver):
                     post_title, post_content = extract_post_content(driver)
                     
                     # 使用普通模式生成回复
-                    input_text = get_gemini_reply(post_title, post_content, is_lottery=False)
+                    input_text = get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=recent_replies)
                     if input_text is None:
                         print(f"帖子 {post_url} 获取回复失败，跳过评论")
                         with open('comment_log.txt', 'a', encoding='utf-8') as f:
@@ -489,6 +501,9 @@ def nodeseek_comment(driver):
                     if success:
                         comment_count += 1
                         commented_urls.add(post_url)  # 记录已回复的URL
+                        recent_replies.append(input_text)  # 记录回复内容
+                        if len(recent_replies) > 10:  # 只保留最近10个回复
+                            recent_replies.pop(0)
                         # 普通帖子评论后等待 10-15 分钟
                         wait_time = random.uniform(600, 900)
                         print(f"等待 {wait_time/60:.1f} 分钟...")
