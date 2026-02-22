@@ -174,6 +174,15 @@ def setup_driver_and_cookies():
             return None
             
         print("开始初始化浏览器...")
+        print(f"当前工作目录: {os.getcwd()}")
+        
+        # 检查 Chrome 是否已安装
+        import subprocess
+        try:
+            chrome_version = subprocess.check_output(['google-chrome', '--version'], stderr=subprocess.STDOUT).decode().strip()
+            print(f"检测到 Chrome: {chrome_version}")
+        except Exception as e:
+            print(f"无法检测 Chrome 版本: {e}")
         
         # 添加重试机制
         driver = None
@@ -181,6 +190,7 @@ def setup_driver_and_cookies():
         for attempt in range(max_retries):
             try:
                 print(f"尝试初始化浏览器 (尝试 {attempt + 1}/{max_retries})...")
+                print(f"时间戳: {time.time()}")
                 
                 # 每次重试都创建新的 ChromeOptions 对象
                 options = uc.ChromeOptions()
@@ -193,11 +203,11 @@ def setup_driver_and_cookies():
                     options.add_argument('--window-size=1920,1080')
                     options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36')
                 
+                print("ChromeOptions 配置完成，开始创建 Chrome 实例...")
                 # 使用 undetected-chromedriver 的自动检测功能
-                print("使用 undetected-chromedriver 自动检测 Chrome 版本...")
-                driver = uc.Chrome(options=options, version_main=None)
+                driver = uc.Chrome(options=options, version_main=None, use_subprocess=True)
                 
-                print("浏览器初始化成功")
+                print(f"浏览器初始化成功，时间戳: {time.time()}")
                 break
             except Exception as e:
                 print(f"初始化尝试 {attempt + 1} 失败：{str(e)}")
