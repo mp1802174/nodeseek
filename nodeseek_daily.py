@@ -82,6 +82,50 @@ def check_lottery_ended(post_title, post_content):
         print(f"判断抽奖状态出错：{str(e)}")
         return False  # 出错时默认未开奖
 
+def check_is_real_lottery(post_title, post_content):
+    """
+    使用 Gemini 判断是否真的是抽奖帖子
+    返回 True 表示是真的抽奖帖子，False 表示不是
+    """
+    try:
+        if not GEMINI_API_KEY:
+            return True  # 无法判断时默认是抽奖帖子（保守策略）
+        
+        prompt = f"""
+判断这个帖子是否真的是抽奖/送福利帖子。
+
+标题：{post_title}
+内容：{post_content[:500]}
+
+规则：
+1. 真的抽奖帖子特征：明确说明送东西、抽奖、福利、赠送、免费领取等，有参与方式
+2. 不是抽奖帖子：只是讨论"年终奖"、"奖金"、"奖励"等话题，没有送东西
+3. 不是抽奖帖子：出售商品、求购、技术讨论等
+4. 只回复"是"或"否"，不要其他内容
+
+回复：
+"""
+        
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+        headers = {"Content-Type": "application/json"}
+        data = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }]
+        }
+        
+        response = requests.post(f"{url}?key={GEMINI_API_KEY}", headers=headers, json=data, timeout=10)
+        response.raise_for_status()
+        
+        result = response.json()
+        reply = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+        
+        return reply == "是"
+        
+    except Exception as e:
+        print(f"判断是否抽奖帖子出错：{str(e)}")
+        return True  # 出错时默认是抽奖帖子（保守策略）
+
 def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=None):
     """
     调用 Gemini API 根据帖子内容生成自然回复，失败时返回 None
@@ -451,6 +495,11 @@ def nodeseek_comment(driver):
                 time.sleep(random.uniform(2, 4))
                 
                 post_title, post_content = extract_post_content(driver)
+                
+                # 使用 Gemini 判断是否真的是抽奖帖子
+                if not check_is_real_lottery(post_title, post_content):
+                    print(f"帖子 {lurl} 不是真的抽奖帖子（如讨论年终奖等），跳过")
+                    continue
                 
                 # 使用 Gemini 判断是否已开奖
                 if check_lottery_ended(post_title, post_content):
