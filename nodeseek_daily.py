@@ -55,7 +55,7 @@ def check_lottery_ended(post_title, post_content):
 内容：{post_content}
 
 规则：
-1. 如果标题或内容明确说明"已开奖"、"开奖结束"、"活动结束"、"已截止"等，回复"是"
+1. 如果标题或内容明确说明"已开奖"、"开奖结束"、"活动结束"、"已开"、"已截止"等，回复"是"
 2. 如果没有明确说明已结束，回复"否"
 3. 只回复"是"或"否"，不要其他内容
 
@@ -106,9 +106,9 @@ def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=
 
 规则：
 1. 如果帖子明确要求回复特定内容（如"回复'XXX'参与"），必须一字不差地回复那个内容
-2. 如果没有明确要求，生成5-12个字的自然回复
+2. 如果没有明确要求，生成4-12个字的自然回复
 3. 回复要像正常人类，不要太简短也不要太复杂
-4. 避免AI痕迹词汇："看起来"、"感觉"、"非常"、"支持"
+4. 避免AI痕迹词汇
 5. 可以表达：参与意愿、对活动的兴趣、简单评价
 
 示例风格（根据实际内容调整）：
@@ -127,9 +127,9 @@ def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=
 
 规则：
 1. 必须理解帖子内容，回复要相关
-2. 6-15个字，自然流畅
+2. 4-15个字，自然流畅
 3. 像正常人类交流，不要太简短也不要太正式
-4. 避免AI痕迹词汇："看起来"、"感觉"、"非常"、"支持"
+4. 避免AI痕迹词汇
 5. 根据内容类型自然回复：
    - 技术/教程：学到了、这个有用、可以试试
    - 出售/交易：多少钱、配置怎么样、价格合适吗
@@ -159,7 +159,7 @@ def get_gemini_reply(post_title, post_content, is_lottery=False, recent_replies=
         reply = reply.strip().replace("\n", " ").replace('"', "").replace(""", "").replace(""", "")
         
         # 统一长度限制：5-20字
-        if len(reply) < 5 or len(reply) > 20:
+        if len(reply) < 4 or len(reply) > 20:
             print(f"Gemini 回复长度异常（{len(reply)}）：{reply}，跳过回复")
             return None
         
@@ -190,7 +190,7 @@ def extract_post_content(driver):
         content_element = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, '.post-content'))
         )
-        post_content = content_element.text.strip()[:500]  # 限制长度
+        post_content = content_element.text.strip()[:5000]  # 限制长度
         
         return post_title, post_content
     except Exception as e:
