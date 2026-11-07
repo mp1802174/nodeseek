@@ -14,7 +14,7 @@ ns_random = os.environ.get("NS_RANDOM", "true").lower() == "true"
 headless = os.environ.get("HEADLESS", "true").lower() == "true"
 
 if not cookie:
-    print("错误: 未找到 NS_COOKIE 环境变量！")
+    print("❌ 错误: 未找到 NS_COOKIE 环境变量！")
     sys.exit(1)
 
 def setup_driver():
@@ -51,10 +51,10 @@ def load_cookies(driver, cookie_str):
                     "domain": ".nodeseek.com",
                     "path": "/"
                 })
-            except Exception as e:
+            except Exception:
                 pass
     driver.refresh()
-    time.sleep(3)
+    time.sleep(4)
 
 def do_checkin(driver):
     print("进入签到看板页面...")
@@ -64,24 +64,60 @@ def do_checkin(driver):
     print(f"当前页面URL: {driver.current_url}")
 
     btn_text = "试试手气" if ns_random else "鸡腿 x 5"
-    print(f"寻找签到按钮: 【{btn_text}】...")
+    print(f"【方式一】寻找网页签到按钮【{btn_text}】...")
 
     try:
-        xpath = f"//button[contains(text(), {btn_text})]"
-        button = WebDriverWait(driver, 8).until(
+        xpath = f"//button[contains(., {btn_text})] | //button[contains(text(), {btn_text})]"
+        button = WebDriverWait(driver, 6).until(
             EC.element_to_be_clickable((By.XPATH, xpath))
         )
         button.click()
-        print(f"点击【{btn_text}】签到按钮成功！")
+        print(f"✅ 成功点击【{btn_text}】按钮！")
         time.sleep(3)
     except Exception as e:
-        print(f"未找到未点击按钮或今日已完成签到: {e}")
-        try:
-            body_text = driver.find_element(By.TAG_NAME, "body").text
-            if "已签到" in body_text or "今日已" in body_text:
-                print("页面状态显示：今日已完成签到。")
-        except Exception:
-            pass
+        print(f"界面按钮未命中或已被签过: {e}")
+
+    # 方式二: 通过浏览器上下文直接调用 NodeSeek 的 POST /api/attendance
+    print("【方式二】在浏览器上下文中调用签到接口 /api/attendance...")
+    try:
+        js_code = """
+        const cb = arguments[arguments.length - 1];
+        const isRandom = arguments[0];
+        fetch(/api/attendance?random= + (isRandom ? true : false), {
+            method: POST,
+            headers: {
+                Content-Type: application/json,
+                Accept: application/json
+            }
+        })
+        .then(r => r.json())
+        .then(d => cb(d))
+        .catch(err => cb({error: err.toString()}));
+        """
+        res = driver.execute_async_script(js_code, ns_random)
+        print(f"接口返回数据: {res}")
+        if isinstance(res, dict):
+            if res.get("success"):
+                print(f"🎉 签到成功！{res.get(message, )}")
+            else:
+                msg = res.get("message", "")
+                if "已签到" in msg or "already" in msg.lower():
+                    print(f"ℹ️ 提示: {msg}")
+                else:
+                    print(f"接口响应: {res}")
+    except Exception as e:
+        print(f"接口执行出错: {e}")
+
+    # 打印页面状态提示
+    try:
+        body_text = driver.find_element(By.TAG_NAME, "body").text
+        for line in body_text.splitlines():
+            line_str = line.strip()
+            if any(k in line_str for k in ["签到", "连签", "获得鸡腿", "鸡腿"]):
+                if len(line_str) < 60:
+                    print(f"页面状态: {line_str}")
+    except Exception:
+        pass
 
 def main():
     driver = None
@@ -89,7 +125,7 @@ def main():
         driver = setup_driver()
         load_cookies(driver, cookie)
         do_checkin(driver)
-        print("=== 纯签到任务顺利结束 ===")
+        print("=== 纯签到任务全部顺利完成 ===")
     except Exception as e:
         print(f"运行异常: {e}")
         traceback.print_exc()
