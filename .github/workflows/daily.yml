@@ -1,76 +1,59 @@
-name: NodeSeek 自动签到评论加鸡腿
+name: NodeSeek 纯自动签到
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
   schedule:
-    - cron: '00 16 * * *'  # UTC 16:00，即北京时间 00:00
+    - cron: '0 16 * * *'  # UTC 16:00 (北京时间 00:00)
 
 jobs:
   run-nodeseek-daily:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11.8'
+          python-version: '3.11'
 
       - name: Setup Chrome and ChromeDriver
         run: |
-          # 安装 Chrome 稳定版
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
           sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+          sudo apt-get install -y google-chrome-stable jq unzip
           
-          # 获取 Chrome 版本
           CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+')
-          echo "Chrome version: $CHROME_VERSION"
-          
-          # 提取主版本号
           CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d. -f1)
           echo "Chrome major version: $CHROME_MAJOR_VERSION"
           
-          # 下载匹配的 ChromeDriver
-          echo "Downloading ChromeDriver for Chrome $CHROME_MAJOR_VERSION..."
-          
-          # 直接使用 jq 查找匹配版本
           wget -q https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json -O versions.json
-          sudo apt-get install -y jq
-          
-          # 查找最新的匹配版本
           CHROMEDRIVER_URL=$(jq -r --arg major "$CHROME_MAJOR_VERSION" '.versions[] | select(.version | startswith($major + ".")) | .downloads.chromedriver[]? | select(.platform == "linux64") | .url' versions.json | tail -1)
           
           if [ -z "$CHROMEDRIVER_URL" ]; then
-            echo "未找到匹配的 ChromeDriver"
-            exit 1
+            CHROMEDRIVER_URL=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json" | jq -r '.channels.Stable.downloads.chromedriver[] | select(.platform=="linux64") | .url')
           fi
           
-          echo "ChromeDriver URL: $CHROMEDRIVER_URL"
+          echo "Downloading: $CHROMEDRIVER_URL"
           wget -q "$CHROMEDRIVER_URL" -O chromedriver.zip
-          unzip -q chromedriver.zip
+          unzip -q -o chromedriver.zip
           sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
-          
-          # 验证版本
-          echo "ChromeDriver version:"
           chromedriver --version
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install selenium>=4.18.1 requests>=2.31.0 undetected-chromedriver>=3.5.5
 
-      - name: Run NodeSeek script
+      - name: Run NodeSeek checkin
         env:
           NS_COOKIE: ${{ secrets.NS_COOKIE }}
-          NS_RANDOM: ${{ secrets.NS_RANDOM }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NS_RANDOM: "true"
           HEADLESS: "true"
         run: |
-          python -u nodeseek_daily.py
+          python -u nodeseek_sign_only.py
+
+      - name: Keepalive Workflow
+        uses: liskin/gh-workflow-keepalive@v1
