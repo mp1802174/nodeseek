@@ -67,7 +67,7 @@ def do_checkin(driver):
     print(f"【方式一】寻找网页签到按钮【{btn_text}】...")
 
     try:
-        xpath = f"//button[contains(., {btn_text})] | //button[contains(text(), {btn_text})]"
+        xpath = f"//button[contains(., '{btn_text}')] | //button[contains(text(), '{btn_text}')]"
         button = WebDriverWait(driver, 6).until(
             EC.element_to_be_clickable((By.XPATH, xpath))
         )
@@ -83,11 +83,11 @@ def do_checkin(driver):
         js_code = """
         const cb = arguments[arguments.length - 1];
         const isRandom = arguments[0];
-        fetch(/api/attendance?random= + (isRandom ? true : false), {
-            method: POST,
+        fetch('/api/attendance?random=' + (isRandom ? 'true' : 'false'), {
+            method: 'POST',
             headers: {
-                Content-Type: application/json,
-                Accept: application/json
+                 'Content-Type': 'application/json',
+                 'Accept': 'application/json'
             }
         })
         .then(r => r.json())
@@ -98,7 +98,7 @@ def do_checkin(driver):
         print(f"接口返回数据: {res}")
         if isinstance(res, dict):
             if res.get("success"):
-                print(f"🎉 签到成功！{res.get(message, )}")
+                print(f"🎉 签到成功！{res.get('message', '')}")
             else:
                 msg = res.get("message", "")
                 if "已签到" in msg or "already" in msg.lower():
